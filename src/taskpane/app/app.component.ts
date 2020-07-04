@@ -1,4 +1,5 @@
-import { Component, ContentChild } from "@angular/core";
+import { Component } from "@angular/core";
+import { Formatting } from "./formatting.interface";
 const template = require("./app.component.html");
 /* global require */
 
@@ -6,33 +7,52 @@ const template = require("./app.component.html");
   selector: "app-home",
   template
 })
-export default class AppComponent {
-  formattedText: string
-  SQL_CORE_KEYWORDS: string[] = ['SELECT', 'FROM', 'WHERE', 'AND', 'IN']
+export default class AppComponent implements Formatting {
 
-  async newCodeBlockOutline() {
+  async processCodeBlock(codestyle: string) {
     try {
       await OneNote.run(async context => {
-        let page = context.application.getActivePage()
-        page.addOutline(100, 100,
-          `<p id="code-block" style="font-family: 'Consolas', 'monaco', 'monospace'">code contents here</p>`
-        )
-        return context.sync()
+        let paragraphs = context.application.getActiveOutline().paragraphs
+        paragraphs.load('richText')
+        context.sync().then(() => {
+          let text = ""
+          paragraphs.items.forEach(item => {
+            text += item.richText.text + ' \n '
+          })
+          let HTML = this.getFormatProcess(codestyle)(text) //function currying...?
+          if (HTML.length != 0) {
+            this.writeHTMLToPage(HTML)
+            //this.deleteOldOutline()
+          }
+        })
       })
     } catch (e) {
       console.log(e)
     }
   }
 
+  getFormatProcess(codestyle: string) {
+    switch (codestyle) {
+      case 'SQL': return this.formatSQLText
+      case 'JS': return this.formatJSText
+    }
+  }
+
+  formatJSText(text: string): string {
+    return '<p>' + text + '</p>'
+  }
+
   formatSQLText(text: string): string {
+    const SQL_CORE_KEYWORDS: string[] = ['SELECT', 'FROM', 'WHERE', 'AND', 'IN']
     let formattedText: string = ''
     let words = text.split(' ')
     if (words.length != 0) {
       words.forEach(word => {
-        word = word.toUpperCase()
-        this.SQL_CORE_KEYWORDS.includes(word) ?
-        formattedText += '<span style="font-weight: bold; color: blue"> ' + word + '</span>':
-        formattedText += '<span> '+ word + '<span>'
+        SQL_CORE_KEYWORDS.includes(word.toUpperCase())
+          ? formattedText += `<span style="font-weight: bold; color: blue; font-family: 'Consolas', 'monaco', 'monospace'">` + word.toUpperCase() + ' </span>'
+          : word == '\n'
+            ? formattedText += '<p></p>'
+            : formattedText += '<span> ' + word + ' <span>'
       })
     }
     return formattedText
@@ -52,22 +72,19 @@ export default class AppComponent {
     }
   }
 
-  async processCodeBlock(codestyle: string) {
-    try {
-      await OneNote.run(async context => {
-        let paragraphs = context.application.getActiveOutline().paragraphs
-        paragraphs.load('richText')
-        context.sync().then(() => {
-          paragraphs.items.forEach(item => {
-            let HTML = this.formatSQLText(item.richText.text)
-            this.writeHTMLToPage(HTML)
-          })
-        })
-      })
-    } catch (e) {
-      console.log(e)
-    }
-  }
+  // async deleteOldOutline() {
+  //   try {
+  //     await OneNote.run(async context => {
+  //       let outline = context.application.getActiveOutline()
+  //       outline.load()
+  //       context.sync().then(() => {
+  //         outline = null
+  //       })
+  //     })
+  //   } catch (e) {
+  //     console.log(e)
+  //   }
+  //}
 
 
 }

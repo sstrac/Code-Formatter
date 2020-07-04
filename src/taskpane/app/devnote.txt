@@ -1,0 +1,5 @@
+  /**
+   * Perhaps at some point I can design an interface which defines all possible code formats e.g sql, javascript, python.
+   * which a processing class implements. This allows for user defined code formatting :)
+   * Could also create a way to allow for custom code formatting as defined by the user for less common languages e.g. elm
+   */
