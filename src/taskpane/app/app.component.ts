@@ -1,7 +1,15 @@
 import { Component } from "@angular/core";
 import { Formatting } from "./formatting.interface";
+import { style } from "@angular/core/src/animation/dsl";
 const template = require("./app.component.html");
 /* global require */
+
+const COMMON_STYLES = `font-family: 'Consolas', 'monaco', 'monospace';`
+
+interface KeywordsStyle {
+  keywords: string[],
+  style: string
+}
 
 @Component({
   selector: "app-home",
@@ -21,7 +29,7 @@ export default class AppComponent implements Formatting {
           })
           let HTML = this.getFormatProcess(codestyle)(text) //function currying...?
           if (HTML.length != 0) {
-            this.writeHTMLToPage(HTML)
+            this.writeHTMLToPage('<div style="' + COMMON_STYLES + '">' + HTML + '</div>')
             //this.deleteOldOutline()
           }
         })
@@ -39,23 +47,23 @@ export default class AppComponent implements Formatting {
   }
 
   formatJSText(text: string): string {
-    return '<p>' + text + '</p>'
+    const CORE_KEYWORDS = ['function', 'class', 'extends', 'constructor', 'super', 'this', 'let',
+      'const', '=>', 'string', 'number', 'boolean']
+    const ACTION_KEYWORDS = ['import', 'export', 'if', 'else', 'switch', 'case', 'return', 'default']
+
+    const styles: KeywordsStyle[] = [
+      { keywords: CORE_KEYWORDS, style: 'color: blue;' },
+      { keywords: ACTION_KEYWORDS, style: 'color: purple;' }
+    ]
+    return getStyledHTMLText(text, styles, true)
   }
 
   formatSQLText(text: string): string {
-    const SQL_CORE_KEYWORDS: string[] = ['SELECT', 'FROM', 'WHERE', 'AND', 'IN']
-    let formattedText: string = ''
-    let words = text.split(' ')
-    if (words.length != 0) {
-      words.forEach(word => {
-        SQL_CORE_KEYWORDS.includes(word.toUpperCase())
-          ? formattedText += `<span style="font-weight: bold; color: blue; font-family: 'Consolas', 'monaco', 'monospace'">` + word.toUpperCase() + ' </span>'
-          : word == '\n'
-            ? formattedText += '<p></p>'
-            : formattedText += '<span> ' + word + ' <span>'
-      })
-    }
-    return formattedText
+    const CORE_KEYWORDS: string[] = ['SELECT', 'FROM', 'WHERE', 'AND', 'IN']
+    const styles: KeywordsStyle[] = [
+      { keywords: CORE_KEYWORDS, style: 'color: blue; font-weight: bold' }
+    ]
+    return getStyledHTMLText(text, styles, false)
   }
 
   async writeHTMLToPage(HTML: string) {
@@ -87,4 +95,29 @@ export default class AppComponent implements Formatting {
   //}
 
 
+}
+function getStyledHTMLText(text: string, keywordStyles: KeywordsStyle[], caseSpecific: boolean): string {
+  /**TODO: handle extra spaces and special characters*/
+  let formattedText: string = ''
+  let words = text.split(' ')
+  if (words.length != 0) {
+    words.forEach(word => {
+      if (word == '\n') {
+        formattedText += '<p>' + word + ' </p>'
+      } else {
+        const comparisonWord = caseSpecific ? word : word.toUpperCase()
+        let styled: boolean = false
+        keywordStyles.forEach(keywordStyle => {
+          if (keywordStyle.keywords.includes(comparisonWord)) {
+            formattedText += '<span style="' + keywordStyle.style + '">' + word + ' </span>'
+            styled = true
+          }
+        })
+        if (!styled) {
+          formattedText += '<span>' + word + ' </span>'
+        }
+      }
+    })
+  }
+  return formattedText
 }
